@@ -1,0 +1,49 @@
+# ── Jenkins Required Plugins ──────────────────────────────────────────────────
+# Install these via: Jenkins → Manage Jenkins → Plugins → Available
+# Or use Jenkins CLI: jenkins-plugin-cli --plugin-file plugins.txt
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Pipeline
+workflow-aggregator          # Core Pipeline support
+pipeline-stage-view          # Pipeline stage visualization
+pipeline-graph-analysis      # Pipeline graph
+blueocean                    # Blue Ocean modern UI (optional but recommended)
+
+# Source Control
+git                          # Git integration
+github                       # GitHub integration
+github-branch-source         # Multibranch pipeline support for GitHub
+github-api                   # GitHub API
+
+# Build Tools
+gradle                       # Gradle build step support
+
+# Docker
+docker-workflow              # Docker Pipeline steps (docker.build, docker.push)
+docker-plugin                # Docker agent support
+
+# AWS
+aws-credentials              # AWS credentials binding
+pipeline-aws                 # AWS Pipeline steps (optional)
+
+# Kubernetes
+kubernetes-cli               # kubectl in pipeline (withKubeConfig step)
+kubernetes                   # Kubernetes agents (optional)
+
+# Test Results
+junit                        # JUnit test result publisher
+
+# Credentials & Security
+credentials                  # Credentials management
+credentials-binding          # Bind credentials to env vars in pipeline
+plain-credentials            # Plain text credentials
+
+# Notifications & UI
+build-timeout                # Build timeout option
+timestamper                  # Add timestamps to console output
+ws-cleanup                   # cleanWs() step
+ansicolor                    # Colored console output
+antisamy-markup-formatter    # Safe HTML in descriptions
+
+# Artifact Management
+archiver                     # Archive artifacts step

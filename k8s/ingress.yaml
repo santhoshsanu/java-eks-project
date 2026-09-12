@@ -1,0 +1,56 @@
+# ── AWS ALB Ingress ───────────────────────────────────────────────────────────
+# Requires AWS Load Balancer Controller installed on the EKS cluster.
+# Installation command (run after terraform apply):
+#   helm repo add eks https://aws.github.io/eks-charts
+#   helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+#     -n kube-system \
+#     --set clusterName=java-eks-cluster \
+#     --set serviceAccount.create=false \
+#     --set serviceAccount.name=aws-load-balancer-controller
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: product-catalog-ingress
+  namespace: product-catalog
+  annotations:
+    # Tell AWS to create an Application Load Balancer
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+
+    # Health check settings
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "10"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+
+    # Listen on port 80 (add 443 when you have a domain + ACM certificate)
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+
+    # Enable access logs (optional — comment out if you don't want S3 costs)
+    # alb.ingress.kubernetes.io/load-balancer-attributes: access_logs.s3.enabled=true,access_logs.s3.bucket=java-eks-project-tfstate-889951088124
+
+spec:
+  rules:
+    - http:
+        paths:
+          # ── All /api/* requests → backend service ──────────────────────
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 80
+
+          # ── All other requests → frontend service ──────────────────────
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80

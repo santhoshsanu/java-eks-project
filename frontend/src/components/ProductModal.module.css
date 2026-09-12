@@ -1,0 +1,64 @@
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; padding: 1rem;
+}
+
+.modal {
+  background: white; border-radius: 16px;
+  width: 100%; max-width: 520px; max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: pop 0.2s ease;
+}
+
+@keyframes pop {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.modalHeader {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.25rem 1.5rem; border-bottom: 1px solid #e5e7eb;
+  position: sticky; top: 0; background: white; z-index: 1;
+}
+.modalHeader h2 { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; }
+.closeBtn {
+  background: none; border: none; font-size: 1.1rem;
+  color: #9ca3af; padding: 0.25rem; transition: color 0.2s;
+}
+.closeBtn:hover { color: #1a1a2e; }
+
+.form { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+
+.field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field label { font-size: 0.85rem; font-weight: 600; color: #374151; }
+.field input, .field select, .field textarea {
+  border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 0.55rem 0.75rem; font-size: 0.9rem; color: #1a1a2e;
+  transition: border-color 0.2s; outline: none;
+  background: #f9fafb;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: #1a1a2e; background: white;
+}
+.field textarea { resize: vertical; }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+.err { font-size: 0.78rem; color: #dc2626; }
+
+.btnRow { display: flex; gap: 0.75rem; justify-content: flex-end; padding-top: 0.5rem; }
+.cancelBtn {
+  padding: 0.55rem 1.2rem; border: 1px solid #d1d5db;
+  border-radius: 8px; background: white; color: #374151;
+  font-size: 0.9rem; font-weight: 600; transition: background 0.2s;
+}
+.cancelBtn:hover { background: #f3f4f6; }
+.saveBtn {
+  padding: 0.55rem 1.5rem; border: none;
+  border-radius: 8px; background: #1a1a2e; color: white;
+  font-size: 0.9rem; font-weight: 600; transition: background 0.2s;
+}
+.saveBtn:hover { background: #e94560; }

@@ -1,0 +1,81 @@
+# ── Backend Deployment ────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: product-catalog
+  labels:
+    app: backend
+    tier: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0        # zero downtime deploy
+  template:
+    metadata:
+      labels:
+        app: backend
+        tier: api
+    spec:
+      containers:
+        - name: backend
+          # IMAGE_TAG is replaced by Jenkins during deploy:
+          # e.g. 889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-42
+          image: 889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:IMAGE_TAG
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: product-catalog-config
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          # ── Liveness Probe — restart pod if app is hung ──────────────────
+          livenessProbe:
+            httpGet:
+              path: /api/products/health
+              port: 8080
+            initialDelaySeconds: 60   # give Spring Boot time to start
+            periodSeconds: 15
+            failureThreshold: 3
+          # ── Readiness Probe — only send traffic when app is ready ────────
+          readinessProbe:
+            httpGet:
+              path: /api/products/health
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 3
+      # Graceful shutdown — wait for in-flight requests to finish
+      terminationGracePeriodSeconds: 30
+
+---
+# ── Backend Service ───────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: product-catalog
+  labels:
+    app: backend
+spec:
+  type: ClusterIP       # internal only — frontend and ingress talk to this
+  selector:
+    app: backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-catalog-config
+  namespace: product-catalog
+data:
+  # Backend config
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8080"
+  SPRING_H2_CONSOLE_ENABLED: "false"   # disable H2 console in production
+
+  # Frontend config — backend API URL inside the cluster
+  # This gets injected into the frontend nginx as an env var
+  VITE_API_URL: ""   # empty = frontend calls /api/* (nginx proxies to backend)

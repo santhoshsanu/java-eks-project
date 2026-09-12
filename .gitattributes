@@ -1,0 +1,10 @@
+# Normalize line endings to LF on all platforms
+* text=auto eol=lf
+
+# Shell scripts must have LF endings
+*.sh text eol=lf
+gradlew text eol=lf
+
+# Windows batch files must have CRLF
+*.bat text eol=crlf
+gradlew.bat text eol=crlf

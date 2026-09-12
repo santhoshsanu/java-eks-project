@@ -1,0 +1,16 @@
+.wrap {
+  position: relative; display: flex; align-items: center;
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+  padding: 0 0.75rem; transition: border-color 0.2s;
+}
+.wrap:focus-within { border-color: #1a1a2e; background: white; }
+.icon { font-size: 1rem; color: #9ca3af; margin-right: 0.5rem; }
+.input {
+  flex: 1; border: none; background: transparent;
+  padding: 0.6rem 0; font-size: 0.95rem; outline: none; color: #1a1a2e;
+}
+.clear {
+  background: none; border: none; color: #9ca3af;
+  font-size: 0.85rem; padding: 0.2rem; transition: color 0.2s;
+}
+.clear:hover { color: #1a1a2e; }
