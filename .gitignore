@@ -9,12 +9,10 @@
 # ── Java / Gradle ──────────────────────────────────────────────────────────────
 backend/build/
 backend/.gradle/
-backend/gradle/
-backend/gradlew
-backend/gradlew.bat
 *.class
 *.log
 *.jar
+!backend/gradle/wrapper/gradle-wrapper.jar
 *.war
 *.ear
 hs_err_pid*

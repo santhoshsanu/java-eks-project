@@ -1,0 +1,268 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  Product Catalog — GitHub Actions CI/CD Pipeline
+#  Triggers: push to main, pull request to main
+#  Stages: build → test → docker → trivy → push-ecr → deploy-eks → verify
+# ══════════════════════════════════════════════════════════════════════════════
+
+name: Product Catalog CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# ── Global environment variables ──────────────────────────────────────────────
+env:
+  AWS_REGION:         ap-south-1
+  AWS_ACCOUNT_ID:     889951088124
+  ECR_REGISTRY:       889951088124.dkr.ecr.ap-south-1.amazonaws.com
+  BACKEND_REPO:       java-eks-backend
+  FRONTEND_REPO:      java-eks-frontend
+  EKS_CLUSTER_NAME:   java-eks-cluster
+  K8S_NAMESPACE:      product-catalog
+
+jobs:
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  JOB 1 — BUILD & TEST BACKEND
+# ══════════════════════════════════════════════════════════════════════════════
+  build-and-test:
+    name: Build & Test Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x backend/gradlew
+
+      - name: Build with Gradle
+        run: |
+          cd backend
+          ./gradlew clean build -x test --no-daemon
+          echo "✅ Backend JAR built successfully"
+          ls -lh build/libs/
+
+      - name: Run Unit Tests
+        run: |
+          cd backend
+          ./gradlew test --no-daemon
+          echo "✅ Unit tests passed"
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar-${{ github.run_number }}
+          path: backend/build/libs/*.jar
+          retention-days: 1
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()    # upload even if tests fail
+        with:
+          name: test-results-${{ github.run_number }}
+          path: backend/build/reports/tests/
+          retention-days: 7
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  JOB 2 — DOCKER BUILD + TRIVY SCAN + PUSH TO ECR
+#  Only runs on push to main (not on PRs)
+# ══════════════════════════════════════════════════════════════════════════════
+  docker-build-scan-push:
+    name: Docker Build → Trivy Scan → Push ECR
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar-${{ github.run_number }}
+          path: backend/build/libs/
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── Docker Build ────────────────────────────────────────────────────────
+      - name: Build Backend Docker image
+        run: |
+          docker build \
+            --no-cache \
+            --tag ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:build-${{ github.run_number }} \
+            --tag ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:latest \
+            ./backend
+          echo "✅ Backend image built: build-${{ github.run_number }}"
+
+      - name: Build Frontend Docker image
+        run: |
+          docker build \
+            --no-cache \
+            --build-arg VITE_API_URL="" \
+            --tag ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:build-${{ github.run_number }} \
+            --tag ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:latest \
+            ./frontend
+          echo "✅ Frontend image built: build-${{ github.run_number }}"
+
+      # ── Trivy Scan ──────────────────────────────────────────────────────────
+      - name: Install Trivy
+        run: |
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -y && sudo apt-get install -y trivy
+          trivy --version
+
+      - name: Trivy scan — Backend image
+        run: |
+          echo "🔍 Scanning backend image..."
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --no-progress \
+            --format table \
+            --output trivy-backend-report.txt \
+            ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:build-${{ github.run_number }}
+          cat trivy-backend-report.txt
+        continue-on-error: true   # report but don't fail pipeline
+
+      - name: Trivy scan — Frontend image
+        run: |
+          echo "🔍 Scanning frontend image..."
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --no-progress \
+            --format table \
+            --output trivy-frontend-report.txt \
+            ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:build-${{ github.run_number }}
+          cat trivy-frontend-report.txt
+        continue-on-error: true
+
+      - name: Upload Trivy reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-reports-${{ github.run_number }}
+          path: trivy-*.txt
+          retention-days: 30
+
+      # ── Push to ECR ─────────────────────────────────────────────────────────
+      - name: Push Backend image to ECR
+        run: |
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:build-${{ github.run_number }}
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:latest
+          echo "✅ Backend pushed: build-${{ github.run_number }}"
+
+      - name: Push Frontend image to ECR
+        run: |
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:build-${{ github.run_number }}
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:latest
+          echo "✅ Frontend pushed: build-${{ github.run_number }}"
+
+      # ── Build summary ───────────────────────────────────────────────────────
+      - name: Print image summary
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  Images pushed to ECR"
+          echo "  Build Number : build-${{ github.run_number }}"
+          echo "  Backend  : ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:build-${{ github.run_number }}"
+          echo "  Frontend : ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:build-${{ github.run_number }}"
+          echo "════════════════════════════════════════"
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  JOB 3 — DEPLOY TO EKS
+#  Only runs on push to main after docker job succeeds
+# ══════════════════════════════════════════════════════════════════════════════
+  deploy-to-eks:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: docker-build-scan-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Configure kubectl for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.EKS_CLUSTER_NAME }}
+          kubectl get nodes
+          echo "✅ kubectl configured"
+
+      - name: Deploy to EKS
+        run: |
+          echo "🚀 Deploying build-${{ github.run_number }} to EKS..."
+
+          # Apply namespace and configmap
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml
+
+          # Replace IMAGE_TAG with actual build number and apply
+          sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/backend-deployment.yaml | kubectl apply -f -
+          sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/frontend-deployment.yaml | kubectl apply -f -
+
+          # Apply ingress and HPA
+          kubectl apply -f k8s/ingress.yaml
+          kubectl apply -f k8s/hpa.yaml
+
+          echo "✅ Manifests applied"
+
+      - name: Wait for rollout
+        run: |
+          echo "⏳ Waiting for backend rollout..."
+          kubectl rollout status deployment/backend \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=180s
+
+          echo "⏳ Waiting for frontend rollout..."
+          kubectl rollout status deployment/frontend \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=180s
+
+          echo "✅ Rollout complete"
+
+      - name: Verify deployment
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  Pods"
+          kubectl get pods -n ${{ env.K8S_NAMESPACE }}
+          echo ""
+          echo "  Services"
+          kubectl get svc -n ${{ env.K8S_NAMESPACE }}
+          echo ""
+          echo "  Ingress / ALB URL"
+          kubectl get ingress -n ${{ env.K8S_NAMESPACE }}
+          echo ""
+          ALB_URL=$(kubectl get ingress product-catalog-ingress \
+            -n ${{ env.K8S_NAMESPACE }} \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "provisioning...")
+          echo "  Application URL → http://${ALB_URL}"
+          echo "════════════════════════════════════════"

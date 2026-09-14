@@ -10,12 +10,12 @@ const api = axios.create({
 })
 
 export const productApi = {
-  getAll: ()                   => api.get('/'),
+  getAll: ()                   => api.get(''),
   getById: (id)                => api.get(`/${id}`),
-  search: (keyword)            => api.get('/', { params: { search: keyword } }),
-  getByCategory: (category)    => api.get('/', { params: { category } }),
-  getInStock: ()               => api.get('/', { params: { inStock: true } }),
-  create: (product)            => api.post('/', product),
+  search: (keyword)            => api.get('', { params: { search: keyword } }),
+  getByCategory: (category)    => api.get('', { params: { category } }),
+  getInStock: ()               => api.get('', { params: { inStock: true } }),
+  create: (product)            => api.post('', product),
   update: (id, product)        => api.put(`/${id}`, product),
   delete: (id)                 => api.delete(`/${id}`),
 }

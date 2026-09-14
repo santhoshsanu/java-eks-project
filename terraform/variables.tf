@@ -96,28 +96,3 @@ variable "ecr_frontend_repo_name" {
   default     = "java-eks-frontend"
 }
 
-# ─── Jenkins EC2 ─────────────────────────────────────────────────────────────
-
-variable "jenkins_instance_type" {
-  description = "EC2 instance type for Jenkins server"
-  type        = string
-  default     = "t3.small"
-}
-
-variable "jenkins_ami_id" {
-  description = "AMI ID for Jenkins EC2 (Ubuntu 22.04 LTS in ap-south-1)"
-  type        = string
-  default     = "ami-0f58b397bc5c1f2e8"  # Ubuntu 22.04 LTS ap-south-1
-}
-
-variable "jenkins_key_pair_name" {
-  description = "EC2 Key Pair name for SSH access to Jenkins server"
-  type        = string
-  default     = "jenkins-keypair"
-}
-
-variable "your_ip_cidr" {
-  description = "Your public IP in CIDR notation for SSH access to Jenkins (e.g. 203.0.113.10/32)"
-  type        = string
-  default     = "0.0.0.0/0"  # CHANGE THIS to your IP for security
-}

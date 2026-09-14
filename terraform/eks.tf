@@ -18,17 +18,6 @@ resource "aws_security_group" "eks_cluster_sg" {
   }
 }
 
-# Allow Jenkins to talk to EKS API server
-resource "aws_security_group_rule" "eks_from_jenkins" {
-  type                     = "ingress"
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.eks_cluster_sg.id
-  source_security_group_id = aws_security_group.jenkins_sg.id
-  description              = "Allow Jenkins to reach EKS API"
-}
-
 # ─── EKS Cluster ─────────────────────────────────────────────────────────────
 
 resource "aws_eks_cluster" "main" {

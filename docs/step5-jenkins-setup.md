@@ -11,14 +11,14 @@ This guide covers: initial setup → plugins → credentials → pipeline job �
 1. Get Jenkins URL from Terraform output:
    ```bash
    terraform output jenkins_url
-   # Example: http://13.200.67.216:8080
+   # Example: http://65.0.158.150:8080
    ```
 
 2. Open in browser. You'll see the "Unlock Jenkins" screen.
 
 3. SSH into Jenkins server to get initial password:
    ```bash
-   ssh -i jenkins-keypair.pem ubuntu@13.200.67.216
+   ssh -i jenkins-keypair.pem ubuntu@65.0.158.150
    sudo cat /var/lib/jenkins/secrets/initialAdminPassword
    ```
 
@@ -114,7 +114,7 @@ If you prefer credential-based approach:
 This triggers Jenkins automatically on every `git push`.
 
 1. Go to your GitHub repo → **Settings** → **Webhooks** → **Add webhook**
-2. Payload URL: `http://13.200.67.216:8080/github-webhook/`
+2. Payload URL: `http://65.0.158.150:8080/github-webhook/`
 3. Content type: `application/json`
 4. Which events: **Just the push event**
 5. Check **Active**

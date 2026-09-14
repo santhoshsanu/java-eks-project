@@ -21,11 +21,3 @@ node_max_size      = 2
 ecr_backend_repo_name  = "java-eks-backend"
 ecr_frontend_repo_name = "java-eks-frontend"
 
-# ─── Jenkins EC2 ──────────────────────────────────────────────────────────────
-jenkins_instance_type = "t3.small"
-jenkins_ami_id        = "ami-0f58b397bc5c1f2e8"   # Ubuntu 22.04 LTS ap-south-1
-jenkins_key_pair_name = "jenkins-keypair"
-
-# IMPORTANT: Replace with your actual public IP to restrict SSH/UI access
-# Find your IP at: https://checkip.amazonaws.com
-your_ip_cidr = "0.0.0.0/0"
