@@ -86,6 +86,7 @@ export default function App() {
           <div className={styles.logo}>
             <span className={styles.logoIcon}>🛍️</span>
             <h1>Product Catalog</h1>
+            <span className={styles.versionBadge}>v2.0</span>
           </div>
           <button className={styles.addBtn} onClick={handleAdd}>
             + Add Product
