@@ -89,9 +89,9 @@ It auto-increments with every pipeline run.
 
 Images are tagged:
 ```
-889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-1
-889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-2
-889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:latest
+003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-1
+003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-2
+003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:latest
 ```
 
 ---

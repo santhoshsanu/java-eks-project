@@ -107,8 +107,8 @@ Expected output:
 ```json
 {
     "UserId": "AIDA...",
-    "Account": "889951088124",
-    "Arn": "arn:aws:iam::889951088124:user/jenkins-terraform-user"
+    "Account": "003399066686",
+    "Arn": "arn:aws:iam::003399066686:user/jenkins-terraform-user"
 }
 ```
 
@@ -120,7 +120,7 @@ This stores your Terraform state file remotely so it's safe and shareable.
 
 1. Go to → https://s3.console.aws.amazon.com
 2. Click **Create bucket**
-3. Bucket name: `java-eks-project-tfstate-889951088124`
+3. Bucket name: `java-eks-project-tfstate-003399066686`
    *(must be globally unique — the account number at the end ensures this)*
 4. Region: same as your preferred region (e.g., `ap-south-1`)
 5. **Block all public access** → keep checked (default)
@@ -149,7 +149,7 @@ This prevents two people (or two pipeline runs) from running Terraform simultane
 - [ ] Role `eks-cluster-role` created
 - [ ] Role `eks-node-role` created with 3 policies attached
 - [ ] AWS CLI configured and `aws sts get-caller-identity` works
-- [ ] S3 bucket `java-eks-project-tfstate-889951088124` created
+- [ ] S3 bucket `java-eks-project-tfstate-003399066686` created
 - [ ] DynamoDB table `terraform-state-lock` created
 
 Once all boxes are checked → tell me and we move to **Step 2: Terraform EKS + ECR**

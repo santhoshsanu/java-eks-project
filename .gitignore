@@ -35,11 +35,13 @@ terraform/*.tfstate.backup
 terraform/.terraform.lock.hcl
 terraform/tfplan
 terraform/*.tfvars.backup
+terraform/alb-iam-policy.json   # downloaded at runtime, not needed in Git
 
 # ── AWS / Keys ─────────────────────────────────────────────────────────────────
 *.pem
 *.ppk
 .aws/
+alb-iam-policy.json             # ALB policy JSON downloaded at runtime
 
 # ── OS ─────────────────────────────────────────────────────────────────────────
 .DS_Store

@@ -81,7 +81,7 @@ This gives the runner access to ECR and EKS without storing any credentials.
 Verify on the EC2:
 ```bash
 aws sts get-caller-identity
-# Should show: arn:aws:iam::889951088124:role/java-eks-project-jenkins-role
+# Should show: arn:aws:iam::003399066686:role/java-eks-project-jenkins-role
 ```
 
 Configure kubectl for the runner user:
@@ -129,10 +129,10 @@ GitLab uses `CI_PIPELINE_IID` as the auto-incrementing build number.
 
 Images are tagged as:
 ```
-889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-1
-889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-2
+003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-1
+003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-2
 ...
-889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:latest
+003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:latest
 ```
 
 ---

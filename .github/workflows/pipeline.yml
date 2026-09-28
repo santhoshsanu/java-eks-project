@@ -15,8 +15,8 @@ on:
 # ── Global environment variables ──────────────────────────────────────────────
 env:
   AWS_REGION:         ap-south-1
-  AWS_ACCOUNT_ID:     889951088124
-  ECR_REGISTRY:       889951088124.dkr.ecr.ap-south-1.amazonaws.com
+  AWS_ACCOUNT_ID:     003399066686
+  ECR_REGISTRY:       003399066686.dkr.ecr.ap-south-1.amazonaws.com
   BACKEND_REPO:       java-eks-backend
   FRONTEND_REPO:      java-eks-frontend
   EKS_CLUSTER_NAME:   java-eks-cluster

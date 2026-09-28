@@ -26,8 +26,8 @@ spec:
       containers:
         - name: backend
           # IMAGE_TAG is replaced by Jenkins during deploy:
-          # e.g. 889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-42
-          image: 889951088124.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:IMAGE_TAG
+          # e.g. 003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:build-42
+          image: 003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-backend:IMAGE_TAG
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

@@ -6,7 +6,7 @@
 # ── Global Variables ──────────────────────────────────────────────────────────
 variables:
   AWS_REGION:          "ap-south-1"
-  AWS_ACCOUNT_ID:      "889951088124"
+  AWS_ACCOUNT_ID:      "003399066686"
   ECR_REGISTRY:        "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
   BACKEND_REPO:        "java-eks-backend"
   FRONTEND_REPO:       "java-eks-frontend"

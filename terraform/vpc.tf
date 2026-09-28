@@ -20,7 +20,7 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# ─── Public Subnets (for Jenkins EC2 + Load Balancer) ────────────────────────
+# ─── Public Subnets (for Load Balancer + EKS Ingress) ────────────────────────
 
 resource "aws_subnet" "public" {
   count                   = length(var.public_subnet_cidrs)

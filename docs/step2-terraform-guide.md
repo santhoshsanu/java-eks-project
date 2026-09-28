@@ -21,7 +21,7 @@
 
 - [ ] AWS CLI configured (`aws sts get-caller-identity` works)
 - [ ] Terraform installed (`terraform --version` shows >= 1.5.0)
-- [ ] S3 bucket `java-eks-project-tfstate-889951088124` exists
+- [ ] S3 bucket `java-eks-project-tfstate-003399066686` exists
 - [ ] DynamoDB table `terraform-state-lock` exists
 - [ ] EC2 Key Pair created (see below)
 
@@ -176,11 +176,18 @@ terraform output eks_kubeconfig_command  # kubectl config command
 
 ## Tear Down (when not needed — saves cost)
 
+### Step 1 — Delete K8s resources first (releases ALB + EIPs)
+```bash
+kubectl delete namespace product-catalog
+```
+Wait 2 minutes for ALB and EIPs to be released by AWS.
+
+### Step 2 — Then destroy Terraform
 ```bash
 terraform destroy
 ```
-This removes ALL resources including EKS, Jenkins EC2, VPC, ECR.
-> ⚠️ ECR images and S3 state file are preserved even after destroy.
+> ⚠️ Always delete K8s namespace BEFORE terraform destroy.
+> Otherwise ALB and EIPs created by K8s controllers won't be cleaned up automatically.
 
 ---
 

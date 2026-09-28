@@ -3,6 +3,7 @@
 resource "aws_ecr_repository" "backend" {
   name                 = var.ecr_backend_repo_name
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true  # AWS native scan on every push
@@ -18,6 +19,7 @@ resource "aws_ecr_repository" "backend" {
 resource "aws_ecr_repository" "frontend" {
   name                 = var.ecr_frontend_repo_name
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true

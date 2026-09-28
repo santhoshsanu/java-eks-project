@@ -61,6 +61,7 @@
         "iam:DeleteInstanceProfile",
         "iam:AddRoleToInstanceProfile",
         "iam:RemoveRoleFromInstanceProfile",
+        "iam:CreateServiceLinkedRole",
         "iam:GetInstanceProfile",
         "iam:CreatePolicy",
         "iam:DeletePolicy",

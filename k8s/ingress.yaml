@@ -31,7 +31,7 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
 
     # Enable access logs (optional — comment out if you don't want S3 costs)
-    # alb.ingress.kubernetes.io/load-balancer-attributes: access_logs.s3.enabled=true,access_logs.s3.bucket=java-eks-project-tfstate-889951088124
+    # alb.ingress.kubernetes.io/load-balancer-attributes: access_logs.s3.enabled=true,access_logs.s3.bucket=mohan-tf-statefile-bucket
 
 spec:
   rules:
