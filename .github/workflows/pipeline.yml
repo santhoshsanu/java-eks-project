@@ -9,8 +9,17 @@ name: Product Catalog CI/CD
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'k8s/**'
+      - '.github/workflows/pipeline.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'k8s/**'
 
 # ── Global environment variables ──────────────────────────────────────────────
 env:
