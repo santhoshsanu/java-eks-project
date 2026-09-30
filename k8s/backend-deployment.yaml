@@ -35,6 +35,24 @@ spec:
           envFrom:
             - configMapRef:
                 name: product-catalog-config
+          env:
+            # ── OpenTelemetry Configuration ──────────────────────────────────
+            - name: OTEL_SERVICE_NAME
+              value: "product-catalog-backend"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.monitoring.svc.cluster.local:4317"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "grpc"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "none"           # logs added in Phase 2
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "deployment.environment=production,service.version=1.0"
+            - name: OTEL_INSTRUMENTATION_MICROMETER_ENABLED
+              value: "true"          # bridges Spring Boot metrics to OTEL
           resources:
             requests:
               cpu: "200m"

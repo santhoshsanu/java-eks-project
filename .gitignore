@@ -41,7 +41,9 @@ terraform/alb-iam-policy.json   # downloaded at runtime, not needed in Git
 *.pem
 *.ppk
 .aws/
-alb-iam-policy.json             # ALB policy JSON downloaded at runtime
+alb-iam-policy.json             # root level — downloaded at runtime
+terraform/alb-iam-policy.json   # terraform folder copy — not needed
+# NOTE: iam/alb-controller-policy.json is intentionally committed — used by Terraform
 
 # ── OS ─────────────────────────────────────────────────────────────────────────
 .DS_Store

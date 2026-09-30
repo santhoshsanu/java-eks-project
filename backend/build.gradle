@@ -29,6 +29,9 @@ dependencies {
     // H2 in-memory database
     runtimeOnly 'com.h2database:h2'
 
+    // Micrometer Prometheus registry — exposes /actuator/prometheus endpoint
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
     // Lombok — reduces boilerplate
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

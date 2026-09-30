@@ -29,11 +29,16 @@ WORKDIR /app
 # Create non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
+# Download OpenTelemetry Java Agent
+# The agent auto-instruments Spring Boot — no code changes needed
+RUN wget -q https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.2.0/opentelemetry-javaagent.jar \
+    -O /app/opentelemetry-javaagent.jar
+
 # Copy jar from builder stage
 COPY --from=builder /app/build/libs/product-catalog.jar app.jar
 
 # Change ownership to non-root user
-RUN chown appuser:appgroup app.jar
+RUN chown appuser:appgroup app.jar opentelemetry-javaagent.jar
 
 USER appuser
 
@@ -44,4 +49,9 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/products/health || exit 1
 
-ENTRYPOINT ["java", "-jar", "-Djava.security.egd=file:/dev/./urandom", "app.jar"]
+# Start app with OTEL Java agent attached
+# OTEL config is passed via env vars in backend-deployment.yaml
+ENTRYPOINT ["java", \
+  "-javaagent:/app/opentelemetry-javaagent.jar", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]

@@ -55,7 +55,7 @@ resource "aws_eks_node_group" "main" {
   subnet_ids = aws_subnet.private[*].id
 
   instance_types = [var.node_instance_type]
-  disk_size      = 20
+  disk_size      = 50   # increased for monitoring stack + Docker images
 
   scaling_config {
     desired_size = var.node_desired_size

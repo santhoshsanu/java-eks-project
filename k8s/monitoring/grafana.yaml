@@ -1,0 +1,215 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  Grafana
+#  Visualization layer — connects to Prometheus as data source
+#  Accessible via LoadBalancer URL
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── ConfigMap — Grafana datasource (auto-provisions Prometheus) ───────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus.monitoring.svc.cluster.local:9090
+        isDefault: true
+        editable: true
+
+---
+# ── ConfigMap — Grafana dashboard provisioning ────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: 'Product Catalog'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards
+
+---
+# ── ConfigMap — Product Catalog Dashboard ────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-product-catalog
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  product-catalog.json: |
+    {
+      "title": "Product Catalog - Application Metrics",
+      "uid": "product-catalog",
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "title": "HTTP Request Rate (req/sec)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [{
+            "expr": "rate(http_server_requests_seconds_count{job=\"product-catalog-backend\"}[1m])",
+            "legendFormat": "{{method}} {{uri}} {{status}}"
+          }]
+        },
+        {
+          "title": "HTTP Response Time (p95)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [{
+            "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=\"product-catalog-backend\"}[5m]))",
+            "legendFormat": "p95 {{uri}}"
+          }]
+        },
+        {
+          "title": "JVM Heap Memory Used (MB)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "targets": [{
+            "expr": "jvm_memory_used_bytes{job=\"product-catalog-backend\", area=\"heap\"} / 1024 / 1024",
+            "legendFormat": "Heap Used MB"
+          }]
+        },
+        {
+          "title": "HTTP Error Rate (4xx + 5xx)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "targets": [{
+            "expr": "rate(http_server_requests_seconds_count{job=\"product-catalog-backend\", status=~\"4..|5..\"}[1m])",
+            "legendFormat": "{{status}} {{uri}}"
+          }]
+        },
+        {
+          "title": "Active Threads",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 16},
+          "targets": [{
+            "expr": "jvm_threads_live_threads{job=\"product-catalog-backend\"}",
+            "legendFormat": "Live Threads"
+          }]
+        },
+        {
+          "title": "JVM GC Pause Time",
+          "type": "timeseries",
+          "gridPos": {"h": 4, "w": 18, "x": 6, "y": 16},
+          "targets": [{
+            "expr": "rate(jvm_gc_pause_seconds_sum{job=\"product-catalog-backend\"}[1m])",
+            "legendFormat": "{{action}} {{cause}}"
+          }]
+        }
+      ]
+    }
+
+---
+# ── Deployment ────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:10.3.3
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: "admin"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin123"      # change this in production
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+            - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+              value: "/var/lib/grafana/dashboards/product-catalog.json"
+          volumeMounts:
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+            - name: storage
+              mountPath: /var/lib/grafana
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: datasources
+          configMap:
+            name: grafana-datasources
+        - name: dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: dashboards
+          configMap:
+            name: grafana-dashboard-product-catalog
+        - name: storage
+          emptyDir: {}
+
+---
+# ── Service (LoadBalancer — accessible from browser) ─────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+spec:
+  type: LoadBalancer    # gives Grafana its own public URL
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000

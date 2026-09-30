@@ -59,9 +59,9 @@ variable "cluster_version" {
 }
 
 variable "node_instance_type" {
-  description = "EC2 instance type for EKS worker nodes (t3.small minimum for K8s system pods)"
+  description = "EC2 instance type for EKS worker nodes (c7i.flex.large = free tier eligible)"
   type        = string
-  default     = "t3.small"
+  default     = "c7i.flex.large"
 }
 
 variable "node_desired_size" {

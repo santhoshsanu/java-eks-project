@@ -58,3 +58,58 @@ resource "aws_iam_role_policy_attachment" "ecr_read_only" {
 }
 
 
+
+# ─── ALB Controller IAM Role (IRSA) ──────────────────────────────────────────
+# IRSA = IAM Roles for Service Accounts
+# Allows the ALB controller pod to call AWS APIs using IAM role (no keys needed)
+
+# ── Create ALB Controller IAM Policy from JSON file ──────────────────────────
+# Policy JSON downloaded from AWS official repo — stored in iam/ folder
+resource "aws_iam_policy" "alb_controller_policy" {
+  name        = "AWSLoadBalancerControllerIAMPolicy"
+  description = "IAM policy for AWS Load Balancer Controller"
+  policy      = file("${path.module}/../iam/alb-controller-policy.json")
+
+  tags = {
+    Name = "AWSLoadBalancerControllerIAMPolicy"
+  }
+}
+
+data "aws_iam_policy_document" "alb_controller_assume_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
+
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "alb_controller_role" {
+  name               = "${var.project_name}-alb-controller-role"
+  assume_role_policy = data.aws_iam_policy_document.alb_controller_assume_role.json
+
+  tags = {
+    Name = "${var.project_name}-alb-controller-role"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "alb_controller_policy" {
+  role       = aws_iam_role.alb_controller_role.name
+  policy_arn = aws_iam_policy.alb_controller_policy.arn
+}

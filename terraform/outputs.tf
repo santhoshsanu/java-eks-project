@@ -65,6 +65,23 @@ output "eks_oidc_provider_arn" {
   value       = aws_iam_openid_connect_provider.eks.arn
 }
 
+# ─── Helm Outputs ─────────────────────────────────────────────────────────────
+
+output "alb_controller_role_arn" {
+  description = "IAM role ARN for ALB controller — attached to K8s service account"
+  value       = aws_iam_role.alb_controller_role.arn
+}
+
+output "metrics_server_status" {
+  description = "Metrics server helm release status"
+  value       = helm_release.metrics_server.status
+}
+
+output "alb_controller_status" {
+  description = "ALB controller helm release status"
+  value       = helm_release.alb_controller.status
+}
+
 # ─── Data Source ──────────────────────────────────────────────────────────────
 
 data "aws_caller_identity" "current" {}

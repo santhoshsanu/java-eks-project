@@ -1,0 +1,118 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  Prometheus
+#  Scrapes metrics from OTEL Collector and Spring Boot Actuator
+#  Stores time-series data — queried by Grafana
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── ConfigMap — Prometheus scrape configuration ───────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s        # scrape every 15 seconds
+      evaluation_interval: 15s
+
+    scrape_configs:
+
+      # ── Scrape OTEL Collector metrics ─────────────────────────────────────
+      - job_name: 'otel-collector'
+        static_configs:
+          - targets: ['otel-collector.monitoring.svc.cluster.local:8889']
+        metrics_path: '/metrics'
+
+      # ── Scrape Spring Boot Actuator directly ──────────────────────────────
+      # Gives JVM, HTTP, DB metrics even without OTEL agent
+      - job_name: 'product-catalog-backend'
+        static_configs:
+          - targets: ['backend-service.product-catalog.svc.cluster.local:80']
+        metrics_path: '/actuator/prometheus'
+        scrape_interval: 15s
+
+      # ── Scrape Prometheus itself ───────────────────────────────────────────
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+---
+# ── Deployment ────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.50.1
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=7d"    # keep 7 days of data
+            - "--web.console.libraries=/etc/prometheus/console_libraries"
+            - "--web.console.templates=/etc/prometheus/consoles"
+            - "--web.enable-lifecycle"               # allows config reload
+          ports:
+            - containerPort: 9090
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: storage
+              mountPath: /prometheus
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "300m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: storage
+          emptyDir: {}    # in-memory storage — use PVC for production
+
+---
+# ── Service ───────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
