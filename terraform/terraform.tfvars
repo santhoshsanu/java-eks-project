@@ -12,7 +12,7 @@ availability_zones   = ["ap-south-1a", "ap-south-1b"]
 # ─── EKS ──────────────────────────────────────────────────────────────────────
 cluster_name       = "java-eks-cluster"
 cluster_version    = "1.31"
-node_instance_type = "c7i.flex.large"  # free tier eligible
+node_instance_type = "m7i-flex.large"  # free tier eligible, 2vCPU 8GB RAM
 node_desired_size  = 1
 node_min_size      = 1
 node_max_size      = 2
