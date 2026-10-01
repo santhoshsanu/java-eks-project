@@ -1,10 +1,10 @@
 # ══════════════════════════════════════════════════════════════════════════════
-#  Grafana
-#  Visualization layer — connects to Prometheus as data source
-#  Accessible via LoadBalancer URL
+#  Grafana — Self-hosted on EKS
+#  Connects to Prometheus running in same cluster
+#  Accessible via AWS LoadBalancer
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── ConfigMap — Grafana datasource (auto-provisions Prometheus) ───────────────
+# ── ConfigMap — Auto-provision Prometheus datasource ──────────────────────────
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -24,7 +24,7 @@ data:
         editable: true
 
 ---
-# ── ConfigMap — Grafana dashboard provisioning ────────────────────────────────
+# ── ConfigMap — Dashboard provisioning ───────────────────────────────────────
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -46,7 +46,7 @@ data:
           path: /var/lib/grafana/dashboards
 
 ---
-# ── ConfigMap — Product Catalog Dashboard ────────────────────────────────────
+# ── ConfigMap — Product Catalog Dashboard ─────────────────────────────────────
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -148,7 +148,7 @@ spec:
             - name: GF_SECURITY_ADMIN_USER
               value: "admin"
             - name: GF_SECURITY_ADMIN_PASSWORD
-              value: "admin123"      # change this in production
+              value: "admin123"
             - name: GF_USERS_ALLOW_SIGN_UP
               value: "false"
             - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
@@ -195,7 +195,7 @@ spec:
           emptyDir: {}
 
 ---
-# ── Service (LoadBalancer — accessible from browser) ─────────────────────────
+# ── Service — LoadBalancer ─────────────────────────────────────────────────────
 apiVersion: v1
 kind: Service
 metadata:
@@ -206,7 +206,7 @@ metadata:
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
 spec:
-  type: LoadBalancer    # gives Grafana its own public URL
+  type: LoadBalancer
   selector:
     app: grafana
   ports:
