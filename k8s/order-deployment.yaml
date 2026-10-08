@@ -1,0 +1,89 @@
+# ── Order Service Deployment ──────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: product-catalog
+  labels:
+    app: order-service
+    tier: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: order-service
+        tier: api
+    spec:
+      containers:
+        - name: order-service
+          image: 003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-order-service:IMAGE_TAG
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+              name: http
+          envFrom:
+            - configMapRef:
+                name: product-catalog-config
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "order-service"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.monitoring.svc.cluster.local:4317"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "grpc"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "none"
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "300m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /api/orders/health
+              port: 8082
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/orders/health
+              port: 8082
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 3
+      terminationGracePeriodSeconds: 30
+
+---
+# ── Order Service ClusterIP Service ───────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: product-catalog
+  labels:
+    app: order-service
+spec:
+  type: ClusterIP
+  selector:
+    app: order-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8082
+      protocol: TCP

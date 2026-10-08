@@ -1,0 +1,89 @@
+# ── User Service Deployment ───────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: product-catalog
+  labels:
+    app: user-service
+    tier: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: user-service
+        tier: api
+    spec:
+      containers:
+        - name: user-service
+          image: 003399066686.dkr.ecr.ap-south-1.amazonaws.com/java-eks-user-service:IMAGE_TAG
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+              name: http
+          envFrom:
+            - configMapRef:
+                name: product-catalog-config
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "user-service"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.monitoring.svc.cluster.local:4317"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "grpc"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "none"
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "300m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /api/users/health
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/users/health
+              port: 8081
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 3
+      terminationGracePeriodSeconds: 30
+
+---
+# ── User Service ClusterIP Service ────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: product-catalog
+  labels:
+    app: user-service
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8081
+      protocol: TCP

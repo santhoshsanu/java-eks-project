@@ -1,16 +1,18 @@
 # ══════════════════════════════════════════════════════════════════════════════
-#  Product Catalog — GitHub Actions CI/CD Pipeline
-#  Triggers: push to main, pull request to main
+#  Microservices CI/CD Pipeline
+#  Services: product-service, user-service, order-service, frontend
 #  Stages: build → test → docker → trivy → push-ecr → deploy-eks → verify
 # ══════════════════════════════════════════════════════════════════════════════
 
-name: Product Catalog CI/CD
+name: Microservices CI/CD
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'backend/**'
+      - 'user-service/**'
+      - 'order-service/**'
       - 'frontend/**'
       - 'k8s/**'
       - '.github/workflows/pipeline.yml'
@@ -18,26 +20,30 @@ on:
     branches: [ main ]
     paths:
       - 'backend/**'
+      - 'user-service/**'
+      - 'order-service/**'
       - 'frontend/**'
       - 'k8s/**'
 
 # ── Global environment variables ──────────────────────────────────────────────
 env:
-  AWS_REGION:         ap-south-1
-  AWS_ACCOUNT_ID:     003399066686
-  ECR_REGISTRY:       003399066686.dkr.ecr.ap-south-1.amazonaws.com
-  BACKEND_REPO:       java-eks-backend
-  FRONTEND_REPO:      java-eks-frontend
-  EKS_CLUSTER_NAME:   java-eks-cluster
-  K8S_NAMESPACE:      product-catalog
+  AWS_REGION:              ap-south-1
+  AWS_ACCOUNT_ID:          003399066686
+  ECR_REGISTRY:            003399066686.dkr.ecr.ap-south-1.amazonaws.com
+  BACKEND_REPO:            java-eks-backend
+  FRONTEND_REPO:           java-eks-frontend
+  USER_SERVICE_REPO:       java-eks-user-service
+  ORDER_SERVICE_REPO:      java-eks-order-service
+  EKS_CLUSTER_NAME:        java-eks-cluster
+  K8S_NAMESPACE:           product-catalog
 
 jobs:
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  JOB 1 — BUILD & TEST BACKEND
+#  JOB 1 — BUILD & TEST ALL SERVICES
 # ══════════════════════════════════════════════════════════════════════════════
   build-and-test:
-    name: Build & Test Backend
+    name: Build & Test All Services
     runs-on: ubuntu-latest
 
     steps:
@@ -51,40 +57,66 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x backend/gradlew
-
-      - name: Build with Gradle
+      # ── Build product-service ───────────────────────────────────────────────
+      - name: Build product-service
         run: |
-          cd backend
-          ./gradlew clean build -x test --no-daemon
-          echo "✅ Backend JAR built successfully"
-          ls -lh build/libs/
+          chmod +x backend/gradlew
+          cd backend && ./gradlew clean build -x test --no-daemon
+          echo "✅ product-service built"
 
-      - name: Run Unit Tests
+      - name: Test product-service
         run: |
-          cd backend
-          ./gradlew test --no-daemon
-          echo "✅ Unit tests passed"
+          cd backend && ./gradlew test --no-daemon
+          echo "✅ product-service tests passed"
 
-      - name: Upload JAR artifact
+      # ── Build user-service ──────────────────────────────────────────────────
+      - name: Build user-service
+        run: |
+          chmod +x user-service/gradlew
+          cd user-service && ./gradlew clean build -x test --no-daemon
+          echo "✅ user-service built"
+
+      - name: Test user-service
+        run: |
+          cd user-service && ./gradlew test --no-daemon
+          echo "✅ user-service tests passed"
+
+      # ── Build order-service ─────────────────────────────────────────────────
+      - name: Build order-service
+        run: |
+          chmod +x order-service/gradlew
+          cd order-service && ./gradlew clean build -x test --no-daemon
+          echo "✅ order-service built"
+
+      - name: Test order-service
+        run: |
+          cd order-service && ./gradlew test --no-daemon
+          echo "✅ order-service tests passed"
+
+      # ── Upload JAR artifacts ────────────────────────────────────────────────
+      - name: Upload JAR artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: backend-jar-${{ github.run_number }}
-          path: backend/build/libs/*.jar
+          name: service-jars-${{ github.run_number }}
+          path: |
+            backend/build/libs/*.jar
+            user-service/build/libs/*.jar
+            order-service/build/libs/*.jar
           retention-days: 1
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: always()    # upload even if tests fail
+        if: always()
         with:
           name: test-results-${{ github.run_number }}
-          path: backend/build/reports/tests/
+          path: |
+            backend/build/reports/tests/
+            user-service/build/reports/tests/
+            order-service/build/reports/tests/
           retention-days: 7
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  JOB 2 — DOCKER BUILD + TRIVY SCAN + PUSH TO ECR
-#  Only runs on push to main (not on PRs)
 # ══════════════════════════════════════════════════════════════════════════════
   docker-build-scan-push:
     name: Docker Build → Trivy Scan → Push ECR
@@ -96,11 +128,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download JAR artifact
+      - name: Download JAR artifacts
         uses: actions/download-artifact@v4
         with:
-          name: backend-jar-${{ github.run_number }}
-          path: backend/build/libs/
+          name: service-jars-${{ github.run_number }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -110,60 +141,62 @@ jobs:
           aws-region:            ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # ── Docker Build ────────────────────────────────────────────────────────
-      - name: Build Backend Docker image
+      # ── Docker Build all services ───────────────────────────────────────────
+      - name: Build product-service image
         run: |
-          docker build \
-            --no-cache \
+          docker build --no-cache \
             --tag ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:build-${{ github.run_number }} \
             --tag ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:latest \
             ./backend
-          echo "✅ Backend image built: build-${{ github.run_number }}"
+          echo "✅ product-service image built"
 
-      - name: Build Frontend Docker image
+      - name: Build user-service image
         run: |
-          docker build \
-            --no-cache \
+          docker build --no-cache \
+            --tag ${{ env.ECR_REGISTRY }}/${{ env.USER_SERVICE_REPO }}:build-${{ github.run_number }} \
+            --tag ${{ env.ECR_REGISTRY }}/${{ env.USER_SERVICE_REPO }}:latest \
+            ./user-service
+          echo "✅ user-service image built"
+
+      - name: Build order-service image
+        run: |
+          docker build --no-cache \
+            --tag ${{ env.ECR_REGISTRY }}/${{ env.ORDER_SERVICE_REPO }}:build-${{ github.run_number }} \
+            --tag ${{ env.ECR_REGISTRY }}/${{ env.ORDER_SERVICE_REPO }}:latest \
+            ./order-service
+          echo "✅ order-service image built"
+
+      - name: Build frontend image
+        run: |
+          docker build --no-cache \
             --build-arg VITE_API_URL="" \
             --tag ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:build-${{ github.run_number }} \
             --tag ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:latest \
             ./frontend
-          echo "✅ Frontend image built: build-${{ github.run_number }}"
+          echo "✅ frontend image built"
 
-      # ── Trivy Scan ──────────────────────────────────────────────────────────
+      # ── Trivy Scan all images ───────────────────────────────────────────────
       - name: Install Trivy
         run: |
-          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update -y && sudo apt-get install -y trivy
-          trivy --version
 
-      - name: Trivy scan — Backend image
+      - name: Trivy scan — all images
         run: |
-          echo "🔍 Scanning backend image..."
-          trivy image \
-            --severity CRITICAL,HIGH \
-            --no-progress \
-            --format table \
-            --output trivy-backend-report.txt \
-            ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:build-${{ github.run_number }}
-          cat trivy-backend-report.txt
-        continue-on-error: true   # report but don't fail pipeline
-
-      - name: Trivy scan — Frontend image
-        run: |
-          echo "🔍 Scanning frontend image..."
-          trivy image \
-            --severity CRITICAL,HIGH \
-            --no-progress \
-            --format table \
-            --output trivy-frontend-report.txt \
-            ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:build-${{ github.run_number }}
-          cat trivy-frontend-report.txt
+          for SERVICE in product-service user-service order-service frontend; do
+            case $SERVICE in
+              product-service) IMAGE=${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:build-${{ github.run_number }} ;;
+              user-service)    IMAGE=${{ env.ECR_REGISTRY }}/${{ env.USER_SERVICE_REPO }}:build-${{ github.run_number }} ;;
+              order-service)   IMAGE=${{ env.ECR_REGISTRY }}/${{ env.ORDER_SERVICE_REPO }}:build-${{ github.run_number }} ;;
+              frontend)        IMAGE=${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:build-${{ github.run_number }} ;;
+            esac
+            echo "🔍 Scanning $SERVICE..."
+            trivy image --severity CRITICAL,HIGH --no-progress --format table \
+              --output trivy-${SERVICE}-report.txt $IMAGE || true
+          done
         continue-on-error: true
 
       - name: Upload Trivy reports
@@ -174,32 +207,21 @@ jobs:
           path: trivy-*.txt
           retention-days: 30
 
-      # ── Push to ECR ─────────────────────────────────────────────────────────
-      - name: Push Backend image to ECR
+      # ── Push all images to ECR ──────────────────────────────────────────────
+      - name: Push all images to ECR
         run: |
           docker push ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:build-${{ github.run_number }}
           docker push ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:latest
-          echo "✅ Backend pushed: build-${{ github.run_number }}"
-
-      - name: Push Frontend image to ECR
-        run: |
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.USER_SERVICE_REPO }}:build-${{ github.run_number }}
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.USER_SERVICE_REPO }}:latest
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.ORDER_SERVICE_REPO }}:build-${{ github.run_number }}
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.ORDER_SERVICE_REPO }}:latest
           docker push ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:build-${{ github.run_number }}
           docker push ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:latest
-          echo "✅ Frontend pushed: build-${{ github.run_number }}"
-
-      # ── Build summary ───────────────────────────────────────────────────────
-      - name: Print image summary
-        run: |
-          echo "════════════════════════════════════════"
-          echo "  Images pushed to ECR"
-          echo "  Build Number : build-${{ github.run_number }}"
-          echo "  Backend  : ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:build-${{ github.run_number }}"
-          echo "  Frontend : ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:build-${{ github.run_number }}"
-          echo "════════════════════════════════════════"
+          echo "✅ All images pushed — build-${{ github.run_number }}"
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  JOB 3 — DEPLOY TO EKS
-#  Only runs on push to main after docker job succeeds
 # ══════════════════════════════════════════════════════════════════════════════
   deploy-to-eks:
     name: Deploy to EKS
@@ -220,13 +242,10 @@ jobs:
 
       - name: Configure kubectl for EKS
         run: |
-          aws eks update-kubeconfig \
-            --region ${{ env.AWS_REGION }} \
-            --name ${{ env.EKS_CLUSTER_NAME }}
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
           kubectl get nodes
-          echo "✅ kubectl configured"
 
-      - name: Deploy to EKS
+      - name: Deploy all services to EKS
         run: |
           echo "🚀 Deploying build-${{ github.run_number }} to EKS..."
 
@@ -234,44 +253,35 @@ jobs:
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -f k8s/configmap.yaml
 
-          # Replace IMAGE_TAG with actual build number and apply
+          # Deploy all services with build number
           sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/backend-deployment.yaml | kubectl apply -f -
           sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/frontend-deployment.yaml | kubectl apply -f -
+          sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/user-deployment.yaml | kubectl apply -f -
+          sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/order-deployment.yaml | kubectl apply -f -
 
           # Apply ingress and HPA
           kubectl apply -f k8s/ingress.yaml
           kubectl apply -f k8s/hpa.yaml
 
-          echo "✅ Manifests applied"
+          echo "✅ All manifests applied"
 
-      - name: Wait for rollout
+      - name: Wait for all rollouts
         run: |
-          echo "⏳ Waiting for backend rollout..."
-          kubectl rollout status deployment/backend \
-            -n ${{ env.K8S_NAMESPACE }} \
-            --timeout=180s
-
-          echo "⏳ Waiting for frontend rollout..."
-          kubectl rollout status deployment/frontend \
-            -n ${{ env.K8S_NAMESPACE }} \
-            --timeout=180s
-
-          echo "✅ Rollout complete"
+          for DEPLOY in backend frontend user-service order-service; do
+            echo "⏳ Waiting for $DEPLOY..."
+            kubectl rollout status deployment/$DEPLOY \
+              -n ${{ env.K8S_NAMESPACE }} --timeout=180s
+          done
+          echo "✅ All rollouts complete"
 
       - name: Verify deployment
         run: |
           echo "════════════════════════════════════════"
-          echo "  Pods"
           kubectl get pods -n ${{ env.K8S_NAMESPACE }}
-          echo ""
-          echo "  Services"
-          kubectl get svc -n ${{ env.K8S_NAMESPACE }}
-          echo ""
-          echo "  Ingress / ALB URL"
+          kubectl get svc  -n ${{ env.K8S_NAMESPACE }}
           kubectl get ingress -n ${{ env.K8S_NAMESPACE }}
-          echo ""
           ALB_URL=$(kubectl get ingress product-catalog-ingress \
             -n ${{ env.K8S_NAMESPACE }} \
             -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "provisioning...")
-          echo "  Application URL → http://${ALB_URL}"
+          echo "Application URL → http://${ALB_URL}"
           echo "════════════════════════════════════════"

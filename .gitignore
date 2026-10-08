@@ -9,10 +9,16 @@
 # ── Java / Gradle ──────────────────────────────────────────────────────────────
 backend/build/
 backend/.gradle/
+user-service/build/
+user-service/.gradle/
+order-service/build/
+order-service/.gradle/
 *.class
 *.log
 *.jar
 !backend/gradle/wrapper/gradle-wrapper.jar
+!user-service/gradle/wrapper/gradle-wrapper.jar
+!order-service/gradle/wrapper/gradle-wrapper.jar
 *.war
 *.ear
 hs_err_pid*
