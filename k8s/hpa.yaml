@@ -1,7 +1,4 @@
 # ── HPA — Backend ────────────────────────────────────────────────────────────
-# Automatically scales backend pods between 1-4 based on CPU usage.
-# Requires metrics-server installed on EKS:
-#   kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -20,26 +17,20 @@ spec:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70    # scale up when CPU > 70%
-    - type: Resource
-      resource:
-        name: memory
-        target:
-          type: Utilization
-          averageUtilization: 80    # scale up when memory > 80%
+          averageUtilization: 85    # increased threshold — avoids scaling in testing
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 60    # wait 60s before scaling up
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 60
-    scaleDown:
-      stabilizationWindowSeconds: 180   # wait 3min before scaling down
+      stabilizationWindowSeconds: 120
       policies:
         - type: Pods
           value: 1
           periodSeconds: 120
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
 
 ---
 # ── HPA — Frontend ───────────────────────────────────────────────────────────
@@ -54,27 +45,27 @@ spec:
     kind: Deployment
     name: frontend
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 2
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
+          averageUtilization: 85
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 60
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 60
-    scaleDown:
-      stabilizationWindowSeconds: 180
+      stabilizationWindowSeconds: 120
       policies:
         - type: Pods
           value: 1
           periodSeconds: 120
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
 
 ---
 # ── HPA — User Service ────────────────────────────────────────────────────────
@@ -89,27 +80,27 @@ spec:
     kind: Deployment
     name: user-service
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 2
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
+          averageUtilization: 85
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 60
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 60
-    scaleDown:
-      stabilizationWindowSeconds: 180
+      stabilizationWindowSeconds: 120
       policies:
         - type: Pods
           value: 1
           periodSeconds: 120
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
 
 ---
 # ── HPA — Order Service ───────────────────────────────────────────────────────
@@ -124,24 +115,24 @@ spec:
     kind: Deployment
     name: order-service
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 2
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
+          averageUtilization: 85
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 60
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 60
-    scaleDown:
-      stabilizationWindowSeconds: 180
+      stabilizationWindowSeconds: 120
       policies:
         - type: Pods
           value: 1
           periodSeconds: 120
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
