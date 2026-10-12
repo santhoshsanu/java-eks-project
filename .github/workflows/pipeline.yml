@@ -254,9 +254,11 @@ jobs:
         run: |
           echo "🚀 Deploying build-${{ github.run_number }} via Helm..."
 
+          # Ensure namespace exists first
+          kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
           helm upgrade --install microservices ./charts/microservices \
             --namespace ${{ env.K8S_NAMESPACE }} \
-            --create-namespace \
             --set global.imageTag=build-${{ github.run_number }} \
             --set global.ecrRegistry=${{ env.ECR_REGISTRY }} \
             --atomic \
