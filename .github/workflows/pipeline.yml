@@ -245,43 +245,42 @@ jobs:
           aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
           kubectl get nodes
 
-      - name: Deploy all services to EKS
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.14.0'
+
+      - name: Deploy all services via Helm
         run: |
-          echo "🚀 Deploying build-${{ github.run_number }} to EKS..."
+          echo "🚀 Deploying build-${{ github.run_number }} via Helm..."
 
-          # Apply namespace and configmap
-          kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/configmap.yaml
+          helm upgrade --install microservices ./charts/microservices \
+            --namespace ${{ env.K8S_NAMESPACE }} \
+            --create-namespace \
+            --set global.imageTag=build-${{ github.run_number }} \
+            --set global.ecrRegistry=${{ env.ECR_REGISTRY }} \
+            --atomic \
+            --timeout 5m \
+            --wait
 
-          # Deploy all services with build number
-          sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/backend-deployment.yaml | kubectl apply -f -
-          sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/frontend-deployment.yaml | kubectl apply -f -
-          sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/user-deployment.yaml | kubectl apply -f -
-          sed "s|IMAGE_TAG|build-${{ github.run_number }}|g" k8s/order-deployment.yaml | kubectl apply -f -
-
-          # Apply ingress and HPA
-          kubectl apply -f k8s/ingress.yaml
-          kubectl apply -f k8s/hpa.yaml
-
-          echo "✅ All manifests applied"
-
-      - name: Wait for all rollouts
-        run: |
-          for DEPLOY in backend frontend user-service order-service; do
-            echo "⏳ Waiting for $DEPLOY..."
-            kubectl rollout status deployment/$DEPLOY \
-              -n ${{ env.K8S_NAMESPACE }} --timeout=180s
-          done
-          echo "✅ All rollouts complete"
+          echo "✅ Helm deploy complete — build-${{ github.run_number }}"
 
       - name: Verify deployment
         run: |
           echo "════════════════════════════════════════"
+          echo "  Helm release status"
+          helm status microservices -n ${{ env.K8S_NAMESPACE }}
+          echo ""
+          echo "  Pods"
           kubectl get pods -n ${{ env.K8S_NAMESPACE }}
-          kubectl get svc  -n ${{ env.K8S_NAMESPACE }}
+          echo ""
+          echo "  Services"
+          kubectl get svc -n ${{ env.K8S_NAMESPACE }}
+          echo ""
+          echo "  Ingress / ALB URL"
           kubectl get ingress -n ${{ env.K8S_NAMESPACE }}
           ALB_URL=$(kubectl get ingress product-catalog-ingress \
             -n ${{ env.K8S_NAMESPACE }} \
             -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "provisioning...")
-          echo "Application URL → http://${ALB_URL}"
+          echo "  Application URL → http://${ALB_URL}"
           echo "════════════════════════════════════════"
