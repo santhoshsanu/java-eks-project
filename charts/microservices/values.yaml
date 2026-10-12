@@ -1,0 +1,111 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  values.yaml — Single source of truth for all microservices configuration
+#  Override any value at deploy time:
+#    helm upgrade --install microservices ./charts/microservices \
+#      --set global.imageTag=build-42
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Global ────────────────────────────────────────────────────────────────────
+global:
+  namespace: product-catalog
+  ecrRegistry: "003399066686.dkr.ecr.ap-south-1.amazonaws.com"
+  imageTag: "latest"                    # overridden by pipeline with build number
+  imagePullPolicy: Always
+  springProfilesActive: "prod"
+
+# ── OTEL Configuration (shared across all services) ───────────────────────────
+otel:
+  enabled: true
+  endpoint: "http://otel-collector.monitoring.svc.cluster.local:4317"
+  protocol: "grpc"
+  metricsExporter: "otlp"
+  tracesExporter: "otlp"
+  logsExporter: "none"
+
+# ── Backend (product-service) ─────────────────────────────────────────────────
+backend:
+  name: backend
+  image: "java-eks-backend"
+  port: 8080
+  replicas: 1
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  livenessProbe:
+    path: /api/products/health
+    initialDelaySeconds: 60
+  readinessProbe:
+    path: /api/products/health
+    initialDelaySeconds: 45
+
+# ── User Service ──────────────────────────────────────────────────────────────
+userService:
+  name: user-service
+  image: "java-eks-user-service"
+  port: 8081
+  replicas: 1
+  resources:
+    requests:
+      cpu: "150m"
+      memory: "256Mi"
+    limits:
+      cpu: "300m"
+      memory: "512Mi"
+  livenessProbe:
+    path: /api/users/health
+    initialDelaySeconds: 60
+  readinessProbe:
+    path: /api/users/health
+    initialDelaySeconds: 45
+
+# ── Order Service ─────────────────────────────────────────────────────────────
+orderService:
+  name: order-service
+  image: "java-eks-order-service"
+  port: 8082
+  replicas: 1
+  resources:
+    requests:
+      cpu: "150m"
+      memory: "256Mi"
+    limits:
+      cpu: "300m"
+      memory: "512Mi"
+  livenessProbe:
+    path: /api/orders/health
+    initialDelaySeconds: 60
+  readinessProbe:
+    path: /api/orders/health
+    initialDelaySeconds: 45
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
+frontend:
+  name: frontend
+  image: "java-eks-frontend"
+  port: 80
+  replicas: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+
+# ── HPA ───────────────────────────────────────────────────────────────────────
+# Disabled for testing — uncomment for production
+hpa:
+  enabled: false   # set to true when nodes have sufficient resources

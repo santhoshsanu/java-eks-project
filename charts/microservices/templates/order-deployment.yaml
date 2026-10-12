@@ -1,0 +1,70 @@
+# ── Order Service Deployment ──────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.orderService.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.orderService.name }}
+    {{- include "microservices.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.orderService.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.orderService.name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.orderService.name }}
+    spec:
+      containers:
+        - name: {{ .Values.orderService.name }}
+          image: {{ include "microservices.image" (dict "registry" .Values.global.ecrRegistry "repo" .Values.orderService.image "tag" .Values.global.imageTag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.orderService.port }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: product-catalog-config
+          env:
+            {{- include "microservices.otelEnv" (dict "serviceName" .Values.orderService.name "Values" .Values) | nindent 12 }}
+          resources:
+            {{- toYaml .Values.orderService.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.orderService.livenessProbe.path }}
+              port: {{ .Values.orderService.port }}
+            initialDelaySeconds: {{ .Values.orderService.livenessProbe.initialDelaySeconds }}
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.orderService.readinessProbe.path }}
+              port: {{ .Values.orderService.port }}
+            initialDelaySeconds: {{ .Values.orderService.readinessProbe.initialDelaySeconds }}
+            periodSeconds: 10
+            failureThreshold: 3
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.orderService.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.orderService.name }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.orderService.name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.orderService.port }}

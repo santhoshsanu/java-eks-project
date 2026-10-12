@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-catalog-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "microservices.labels" . | nindent 4 }}
+data:
+  SPRING_PROFILES_ACTIVE: {{ .Values.global.springProfilesActive | quote }}
+  SPRING_H2_CONSOLE_ENABLED: "false"
+  VITE_API_URL: ""

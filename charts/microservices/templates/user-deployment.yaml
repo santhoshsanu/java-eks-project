@@ -1,0 +1,70 @@
+# ── User Service Deployment ───────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.userService.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.userService.name }}
+    {{- include "microservices.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.userService.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.userService.name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.userService.name }}
+    spec:
+      containers:
+        - name: {{ .Values.userService.name }}
+          image: {{ include "microservices.image" (dict "registry" .Values.global.ecrRegistry "repo" .Values.userService.image "tag" .Values.global.imageTag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.userService.port }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: product-catalog-config
+          env:
+            {{- include "microservices.otelEnv" (dict "serviceName" .Values.userService.name "Values" .Values) | nindent 12 }}
+          resources:
+            {{- toYaml .Values.userService.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.userService.livenessProbe.path }}
+              port: {{ .Values.userService.port }}
+            initialDelaySeconds: {{ .Values.userService.livenessProbe.initialDelaySeconds }}
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.userService.readinessProbe.path }}
+              port: {{ .Values.userService.port }}
+            initialDelaySeconds: {{ .Values.userService.readinessProbe.initialDelaySeconds }}
+            periodSeconds: 10
+            failureThreshold: 3
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.userService.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.userService.name }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.userService.name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.userService.port }}

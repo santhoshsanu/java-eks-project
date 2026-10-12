@@ -1,138 +1,90 @@
-# ── HPA — Backend ────────────────────────────────────────────────────────────
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: backend-hpa
-  namespace: product-catalog
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: backend
-  minReplicas: 1
-  maxReplicas: 4
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 85    # increased threshold — avoids scaling in testing
-  behavior:
-    scaleUp:
-      stabilizationWindowSeconds: 120
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 120
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 180
+# ══════════════════════════════════════════════════════════════════════════════
+#  HPA — Commented out for testing environment
+#  HPA was causing pods to scale up to 4 replicas on t-series nodes
+#  causing disk pressure on the node.
+#  Uncomment when running on production nodes with sufficient resources.
+# ══════════════════════════════════════════════════════════════════════════════
 
----
-# ── HPA — Frontend ───────────────────────────────────────────────────────────
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: frontend-hpa
-  namespace: product-catalog
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: frontend
-  minReplicas: 1
-  maxReplicas: 2
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 85
-  behavior:
-    scaleUp:
-      stabilizationWindowSeconds: 120
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 120
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 180
-
----
-# ── HPA — User Service ────────────────────────────────────────────────────────
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: user-service-hpa
-  namespace: product-catalog
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: user-service
-  minReplicas: 1
-  maxReplicas: 2
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 85
-  behavior:
-    scaleUp:
-      stabilizationWindowSeconds: 120
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 120
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 180
-
----
-# ── HPA — Order Service ───────────────────────────────────────────────────────
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: order-service-hpa
-  namespace: product-catalog
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: order-service
-  minReplicas: 1
-  maxReplicas: 2
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 85
-  behavior:
-    scaleUp:
-      stabilizationWindowSeconds: 120
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 120
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 180
+# ---
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: backend-hpa
+#   namespace: product-catalog
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: backend
+#   minReplicas: 1
+#   maxReplicas: 4
+#   metrics:
+#     - type: Resource
+#       resource:
+#         name: cpu
+#         target:
+#           type: Utilization
+#           averageUtilization: 85
+#
+# ---
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: frontend-hpa
+#   namespace: product-catalog
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: frontend
+#   minReplicas: 1
+#   maxReplicas: 2
+#   metrics:
+#     - type: Resource
+#       resource:
+#         name: cpu
+#         target:
+#           type: Utilization
+#           averageUtilization: 85
+#
+# ---
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: user-service-hpa
+#   namespace: product-catalog
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: user-service
+#   minReplicas: 1
+#   maxReplicas: 2
+#   metrics:
+#     - type: Resource
+#       resource:
+#         name: cpu
+#         target:
+#           type: Utilization
+#           averageUtilization: 85
+#
+# ---
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: order-service-hpa
+#   namespace: product-catalog
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: order-service
+#   minReplicas: 1
+#   maxReplicas: 2
+#   metrics:
+#     - type: Resource
+#       resource:
+#         name: cpu
+#         target:
+#           type: Utilization
+#           averageUtilization: 85
