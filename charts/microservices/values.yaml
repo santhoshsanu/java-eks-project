@@ -20,7 +20,7 @@ otel:
   protocol: "grpc"
   metricsExporter: "otlp"
   tracesExporter: "otlp"
-  logsExporter: "none"
+  logsExporter: "otlp"        # enabled in Phase 2
 
 # ── Backend (product-service) ─────────────────────────────────────────────────
 backend:
